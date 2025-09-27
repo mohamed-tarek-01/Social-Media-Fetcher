@@ -115,7 +115,6 @@ class TwitterFetcher:
             context.close()
 
     def close(self):
-        """Closes the browser and stops Playwright."""
         self.browser.close()
         self.playwright.stop()
 
@@ -140,7 +139,7 @@ class InstagramFetcher:
             return {"error": str(e)}
 
 
-def display_twitter_profile_image(profile_picture_url, image_label):
+def display_profile_image(profile_picture_url, image_label):
     if profile_picture_url and profile_picture_url != "N/A":
         try:
             # Download the image from the URL
@@ -150,51 +149,14 @@ def display_twitter_profile_image(profile_picture_url, image_label):
             img_tk = ImageTk.PhotoImage(img)
 
             # Update image_label to display the image
-            image_label.config(image=img_tk)
+            image_label.config(image=img_tk, text="")  # clear text if any
             image_label.image = img_tk  # Keep the reference to avoid garbage collection
         except Exception as e:
             image_label.config(text=f"Error loading image: {e}")
             image_label.image = None
     else:
         image_label.config(text="No image available")
-
-
-def display_facebook_profile_image(profile_picture_url, image_label):
-    if profile_picture_url and profile_picture_url != "N/A":
-        try:
-            # Download the image from the URL
-            img_data = requests.get(profile_picture_url).content
-            img = Image.open(BytesIO(img_data))
-            img = img.resize((100, 100))  # Resize to fit the interface
-            img_tk = ImageTk.PhotoImage(img)
-
-            # Update image_label to display the image
-            image_label.config(image=img_tk)
-            image_label.image = img_tk  # Keep the reference to avoid garbage collection
-        except Exception as e:
-            image_label.config(text=f"Error loading image: {e}")
-            image_label.image = None
-    else:
-        image_label.config(text="No image available")
-
-
-def display_instagram_profile_image(profile_picture_url, image_label):
-    if profile_picture_url and profile_picture_url != "N/A":
-        try:
-            # Download the image from the URL
-            img_data = requests.get(profile_picture_url).content
-            img = Image.open(BytesIO(img_data))
-            img = img.resize((100, 100))  # Resize to fit the interface
-            img_tk = ImageTk.PhotoImage(img)
-
-            # Update image_label to display the image
-            image_label.config(image=img_tk)
-            image_label.image = img_tk  # Keep the reference to avoid garbage collection
-        except Exception as e:
-            image_label.config(text=f"Error loading image: {e}")
-            image_label.image = None
-    else:
-        image_label.config(text="No image available")
+        image_label.image = None
 
 
 def fetch_data_from_platform(platform_name, user_input, result_label, image_label):
@@ -208,26 +170,25 @@ def fetch_data_from_platform(platform_name, user_input, result_label, image_labe
             fetcher.close()
             # When retrieving Facebook data, show the profile picture
             profile_picture_url = data.get("Profile Picture", "N/A")
-            display_facebook_profile_image(profile_picture_url, image_label)
+            display_profile_image(profile_picture_url, image_label)
 
         elif platform_name == "Instagram":
             fetcher = InstagramFetcher()
             username = user_input.get("instagram_username", "")
             data = fetcher.get_basic_info(username)
+            # When retrieving Instagram data, show the profile picture
             profile_picture_url = data.get("Profile Picture", "N/A")
-            display_instagram_profile_image(profile_picture_url, image_label)
+            display_profile_image(profile_picture_url, image_label)
 
         elif platform_name == "Twitter":
             fetcher = TwitterFetcher()
             username = user_input.get("twitter_username", "")
             data = fetcher.get_tweets(username)
             fetcher.close()
-            # When retrieving Twitter data, pass the profile picture URL to the function
-            if data and isinstance(data, list):
-                profile_picture_url = data[0].get("profile_picture", "N/A")  # Retrieve the profile picture URL
-                display_twitter_profile_image(profile_picture_url, image_label)  # Display the image
-            else:
-                data = {"error": "Unknown Platform"}
+            # Get profile picture from the first tweet (since all tweets share the same profile picture)
+            profile_picture_url = data[0].get("profile_picture", "N/A") if isinstance(data, list) and data else "N/A"
+            display_profile_image(profile_picture_url, image_label)
+
         else:
             data = {"error": "Unknown Platform"}
 
@@ -275,6 +236,7 @@ def fetch_data_from_platform(platform_name, user_input, result_label, image_labe
             results[platform_name] = {"error": str(e)}
         result_label.config(text=f"Error fetching data: {e}")
         print(f"Error fetching {platform_name} data: {e}")
+
 
 
 # Open a window for each thread with input fields and results display
